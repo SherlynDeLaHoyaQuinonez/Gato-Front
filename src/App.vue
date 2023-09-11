@@ -15,7 +15,9 @@
     </div>
     <div class="message">
       <p>{{ message }}</p>
-      <button @click="startNewGame">Nuevo Juego</button>
+      <button @click="startNewGame">Reiniciar</button>
+      <div style="margin-top: 10px"></div>
+      <button @click="startGame">Nuevo juego</button>
     </div>
   </div>
 </template>
@@ -33,14 +35,22 @@ export default {
       ],
       currentPlayer: "X",
       message: "",
-      apiBaseUrl: "http://127.0.0.1:3000", // Cambia a la URL de tu API
+      apiBaseUrl: "https://0h2kov0us3.execute-api.us-east-1.amazonaws.com",
+      currentGameId: null,
     };
   },
   methods: {
     makeMove(row, col) {
-      if (this.board[row][col] === "" && !this.isGameOver()) {
+      if (
+        this.currentGameId &&
+        this.board[row][col] === "" &&
+        !this.isGameOver()
+      ) {
         axios
-          .post(`${this.apiBaseUrl}/makeMove`, { row, col })
+          .put(`${this.apiBaseUrl}/makeMove/${this.currentGameId}`, {
+            row,
+            col,
+          })
           .then((response) => {
             if (response.data.success) {
               this.board[row][col] = this.currentPlayer;
@@ -57,63 +67,17 @@ export default {
           })
           .catch((error) => {
             console.error(error);
-            // Agregar manejo de errores adicional según sea necesario
           });
       }
     },
-    checkWinner(row, col) {
-      const player = this.currentPlayer;
-      return (
-        this.checkRow(row, player) ||
-        this.checkColumn(col, player) ||
-        this.checkDiagonals(player)
-      );
-    },
-    checkRow(row, player) {
-      for (let i = 0; i < 3; i++) {
-        if (this.board[row][i] !== player) {
-          return false;
-        }
-      }
-      return true;
-    },
-    checkColumn(col, player) {
-      for (let i = 0; i < 3; i++) {
-        if (this.board[i][col] !== player) {
-          return false;
-        }
-      }
-      return true;
-    },
-    checkDiagonals(player) {
-      return (
-        (this.board[0][0] === player &&
-          this.board[1][1] === player &&
-          this.board[2][2] === player) ||
-        (this.board[0][2] === player &&
-          this.board[1][1] === player &&
-          this.board[2][0] === player)
-      );
-    },
-    isBoardFull() {
-      for (let i = 0; i < 3; i++) {
-        for (let j = 0; j < 3; j++) {
-          if (this.board[i][j] === "") {
-            return false;
-          }
-        }
-      }
-      return true;
-    },
-    isGameOver() {
-      return this.message !== "";
-    },
-    startNewGame() {
+    startGame() {
       axios
-        .post(`${this.apiBaseUrl}/resetGame`)
+        .put(`${this.apiBaseUrl}/1`)
         .then((response) => {
           if (response.data.success) {
-            // Reiniciar el juego en el frontend
+            // Debes asignar el ID del juego aquí
+            this.currentGameId = response.data.gameId;
+
             this.board = [
               ["", "", ""],
               ["", "", ""],
@@ -122,14 +86,38 @@ export default {
             this.currentPlayer = "X";
             this.message = "";
           } else {
-            console.error("Error al reiniciar el juego");
+            console.error("Error al iniciar el juego");
           }
         })
         .catch((error) => {
           console.error(error);
-          // Agregar manejo de errores adicional según sea necesario
         });
     },
+    startNewGame() {
+      if (this.currentGameId) {
+        // Verifica que tengas un juego en curso
+        axios
+          .put(`${this.apiBaseUrl}/resetGame/${this.currentGameId}`)
+          .then((response) => {
+            if (response.data.success) {
+              // Reinicia el juego en el frontend
+              this.board = [
+                ["", "", ""],
+                ["", "", ""],
+                ["", "", ""],
+              ];
+              this.currentPlayer = "X";
+              this.message = "";
+            } else {
+              console.error("Error al reiniciar el juego");
+            }
+          })
+          .catch((error) => {
+            console.error(error);
+            // Agregar manejo de errores adicional según sea necesario
+          });
+      }
+    }
   },
 };
 </script>
